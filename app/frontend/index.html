@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAP Finance Intelligence | Databricks</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+  :root {
+    --db-cyan: #40d1f5;
+    --db-dark: #0B2026;
+    --db-red: #EB1600;
+    --db-bg: #F9F7F4;
+    --db-gray: #F9F7F4;
+    --sap-blue: #0070F2;
+    --sap-gold: #F0AB00;
+    --sap-dark: #354A5F;
+    --sidebar-w: 280px;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--db-bg);
+    color: var(--db-dark);
+    height: 100vh;
+    display: flex;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    width: var(--sidebar-w);
+    background: var(--db-dark);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+  .sidebar-header {
+    padding: 20px 16px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  .sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .sidebar-brand svg { flex-shrink: 0; }
+  .sidebar-brand-text {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    opacity: 0.9;
+  }
+  .new-chat-btn {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--db-red);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.2s;
+  }
+  .new-chat-btn:hover { background: #D01400; }
+  .conv-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+  }
+  .conv-list::-webkit-scrollbar { width: 4px; }
+  .conv-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
+  .conv-item {
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    color: rgba(255,255,255,0.75);
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 2px;
+    position: relative;
+  }
+  .conv-item:hover { background: rgba(255,255,255,0.08); color: white; }
+  .conv-item.active { background: rgba(255,255,255,0.12); color: white; }
+  .conv-item .conv-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .conv-item .conv-delete {
+    opacity: 0; font-size: 16px; color: rgba(255,255,255,0.5);
+    cursor: pointer; padding: 2px 4px; transition: opacity 0.15s;
+  }
+  .conv-item:hover .conv-delete { opacity: 1; }
+  .conv-item .conv-delete:hover { color: var(--db-red); }
+  .sidebar-footer {
+    padding: 12px 16px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .sidebar-footer .badge-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .sidebar-footer .badge {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+  }
+  .badge-sap { background: var(--sap-blue); color: white; }
+  .badge-db { background: var(--db-red); color: white; }
+  .badge-connect { background: var(--sap-gold); color: var(--db-dark); }
+  .sidebar-footer-text { font-size: 10px; opacity: 0.5; }
+
+  /* X-Ray toggle */
+  .xray-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .xray-toggle-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.6);
+    letter-spacing: 0.3px;
+    transition: color 0.2s;
+  }
+  .xray-toggle.active .xray-toggle-label { color: var(--db-cyan); }
+  .xray-switch {
+    width: 34px;
+    height: 18px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 9px;
+    position: relative;
+    transition: background 0.25s;
+    flex-shrink: 0;
+  }
+  .xray-toggle.active .xray-switch { background: var(--db-cyan); }
+  .xray-switch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: white;
+    transition: transform 0.25s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .xray-toggle.active .xray-switch::after { transform: translateX(16px); }
+  .xray-icon {
+    font-size: 14px;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+  }
+  .xray-toggle.active .xray-icon { opacity: 1; }
+
+  /* X-Ray mode: toggle visibility of steps + thinking variants */
+  .steps-timeline { display: none; }
+  body.xray-on .steps-timeline { display: block; }
+  .thinking-simple { display: flex; align-items: center; gap: 8px; }
+  .thinking-xray { display: none; width: 100%; }
+  body.xray-on .thinking-simple { display: none; }
+  body.xray-on .thinking-xray { display: block; }
+  .steps-timeline {
+    margin-bottom: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #eee;
+  }
+  .steps-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    cursor: pointer;
+  }
+  .steps-header:hover { color: #666; }
+  .steps-header .chevron {
+    transition: transform 0.2s;
+    font-size: 10px;
+  }
+  .steps-header.collapsed .chevron { transform: rotate(-90deg); }
+  .steps-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+  }
+  .steps-list.collapsed { max-height: 0 !important; }
+  .step-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 5px 0;
+    position: relative;
+  }
+  .step-item::before {
+    content: '';
+    position: absolute;
+    left: 11px;
+    top: 22px;
+    bottom: -5px;
+    width: 1px;
+    background: #e0e0e0;
+  }
+  .step-item:last-child::before { display: none; }
+  .step-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+  }
+  .step-icon.agent { background: #F3F4F6; color: #6B7280; }
+  .step-icon.genie { background: #E8F0FE; color: var(--sap-blue); }
+  .step-icon.document { background: #FFF3E0; color: #E65100; }
+  .step-icon.done { background: #E8F5E9; color: #2E7D32; }
+  .step-icon.error { background: #FEE8E8; color: #D32F2F; }
+  .step-body { flex: 1; min-width: 0; }
+  .step-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #555;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  .step-detail {
+    font-size: 12px;
+    color: #666;
+    margin-top: 1px;
+    line-height: 1.4;
+  }
+  .step-sql {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 11px;
+    background: #f8f9fa;
+    border: 1px solid #e8e8e8;
+    border-radius: 6px;
+    padding: 6px 8px;
+    margin-top: 4px;
+    color: #444;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 80px;
+    overflow-y: auto;
+    cursor: pointer;
+  }
+  .step-sql:hover { background: #f0f1f3; }
+
+  /* Main area */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  /* Header */
+  .header {
+    background: white;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border-bottom: 1px solid #e0e0e0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .header-logos {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .header-logos img, .header-logos svg { height: 24px; }
+  .header-divider { width: 1px; height: 28px; background: #ddd; }
+  .header h1 {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--db-dark);
+    flex: 1;
+  }
+  .header-tag {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: var(--sap-blue);
+    color: white;
+    text-transform: uppercase;
+  }
+
+  /* Chat area */
+  .chat-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .chat-container::-webkit-scrollbar { width: 6px; }
+  .chat-container::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+
+  .message { max-width: 85%; animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; } }
+
+  .message.user {
+    align-self: flex-end;
+    background: var(--db-dark);
+    color: white;
+    padding: 12px 18px;
+    border-radius: var(--radius) var(--radius) 4px var(--radius);
+    font-size: 14px;
+  }
+  .message.assistant {
+    align-self: flex-start;
+    background: white;
+    padding: 20px;
+    border-radius: 4px var(--radius) var(--radius) var(--radius);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .message.assistant h1, .message.assistant h2, .message.assistant h3 {
+    margin: 16px 0 8px; color: var(--db-dark);
+  }
+  .message.assistant h1:first-child, .message.assistant h2:first-child { margin-top: 0; }
+  .message.assistant h1 { font-size: 18px; }
+  .message.assistant h2 { font-size: 16px; }
+  .message.assistant h3 { font-size: 14px; }
+  .message.assistant table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; }
+  .message.assistant th { background: var(--db-gray); font-weight: 600; text-align: left; padding: 8px 12px; border-bottom: 2px solid #ddd; }
+  .message.assistant td { padding: 6px 12px; border-bottom: 1px solid #eee; }
+  .message.assistant tr:hover td { background: #f9f9f9; }
+  .message.assistant code { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+  .message.assistant pre { background: #1e1e1e; color: #d4d4d4; padding: 12px; border-radius: 8px; overflow-x: auto; margin: 8px 0; }
+  .message.assistant pre code { background: none; padding: 0; color: inherit; }
+  .message.assistant ul, .message.assistant ol { padding-left: 20px; margin: 8px 0; }
+  .message.assistant strong { color: var(--db-dark); }
+
+  /* Source chips */
+  .sources { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee; }
+  .source-chip {
+    font-size: 11px; padding: 4px 10px; border-radius: 20px; cursor: pointer;
+    transition: all 0.2s; display: flex; align-items: center; gap: 4px;
+  }
+  .source-chip.sql { background: #E8F0FE; color: var(--sap-blue); border: 1px solid #B8D4FE; }
+  .source-chip.sql:hover { background: #D0E4FE; }
+  .source-chip.document { background: #FFF3E0; color: #E65100; border: 1px solid #FFCC80; }
+  .source-chip.document:hover { background: #FFE0B2; }
+  .source-chip.error { background: #FEE8E8; color: #D32F2F; border: 1px solid #FEB8B8; }
+  .source-detail {
+    display: none; margin-top: 8px; background: #f8f9fa; border-radius: 8px; padding: 10px;
+    font-family: monospace; font-size: 12px; white-space: pre-wrap; word-break: break-all;
+    border: 1px solid #e0e0e0; max-height: 200px; overflow-y: auto;
+  }
+  .source-detail.visible { display: block; }
+  .source-detail.doc-viewer {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    white-space: normal;
+    word-break: normal;
+    max-height: 400px;
+    padding: 16px 20px;
+    background: white;
+    border: 1px solid #FFCC80;
+    line-height: 1.6;
+  }
+  .source-detail.doc-viewer .doc-viewer-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+    border-bottom: 2px solid #FFCC80;
+    font-weight: 600;
+    color: #E65100;
+    font-size: 14px;
+  }
+  .source-detail.doc-viewer table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 12px; }
+  .source-detail.doc-viewer th { background: #FFF3E0; font-weight: 600; text-align: left; padding: 6px 10px; border-bottom: 2px solid #FFCC80; }
+  .source-detail.doc-viewer td { padding: 5px 10px; border-bottom: 1px solid #f0e0cc; }
+  .source-detail.doc-viewer h1, .source-detail.doc-viewer h2, .source-detail.doc-viewer h3 { margin: 12px 0 6px; color: #E65100; }
+  .source-detail.doc-viewer h1 { font-size: 16px; }
+  .source-detail.doc-viewer h2 { font-size: 14px; }
+  .source-detail.doc-viewer strong { color: #333; }
+
+  /* Thinking */
+  .thinking {
+    align-self: flex-start; display: flex; align-items: center; gap: 8px;
+    padding: 12px 18px; background: white;
+    border-radius: 4px var(--radius) var(--radius) var(--radius);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08); font-size: 13px; color: #666;
+  }
+  .thinking .dots span {
+    display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--db-red); animation: bounce 1.4s infinite; margin: 0 2px;
+  }
+  .thinking .dots span:nth-child(2) { animation-delay: 0.2s; }
+  .thinking .dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
+
+  /* Welcome */
+  .welcome { text-align: center; padding: 40px 20px; color: #666; }
+  .welcome-logos { display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 20px; }
+  .welcome-logos svg, .welcome-logos img { height: 32px; }
+  .welcome-connector { font-size: 20px; color: #ccc; }
+  .welcome h2 { color: var(--db-dark); margin-bottom: 8px; font-size: 22px; }
+  .welcome p { font-size: 14px; margin-bottom: 20px; max-width: 600px; margin-left: auto; margin-right: auto; color: #666; }
+  .welcome .event-badge {
+    display: inline-block; margin-bottom: 20px; padding: 6px 16px;
+    background: var(--sap-blue); color: white;
+    border-radius: 20px; font-size: 12px; font-weight: 600; letter-spacing: 0.5px;
+  }
+  .welcome .doc-badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-bottom: 20px; }
+  .welcome .doc-badge {
+    font-size: 11px; padding: 3px 10px; border-radius: 12px;
+    background: #FFF3E0; color: #E65100; border: 1px solid #FFCC80;
+  }
+  .suggestions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 750px; margin: 0 auto; }
+  .suggestion {
+    background: white; border: 1px solid #ddd; border-radius: 20px; padding: 8px 16px;
+    font-size: 13px; cursor: pointer; transition: all 0.2s; color: #333; text-align: left;
+  }
+  .suggestion:hover { border-color: var(--db-red); color: var(--db-dark); box-shadow: 0 2px 8px rgba(235,22,0,0.15); }
+  .suggestion .tag {
+    font-size: 10px; font-weight: 600; display: inline-block; padding: 1px 6px;
+    border-radius: 4px; margin-right: 4px; vertical-align: middle;
+  }
+  .tag-both { background: #E8F5E9; color: #2E7D32; }
+  .tag-sql { background: #E8F0FE; color: var(--sap-blue); }
+  .tag-doc { background: #FFF3E0; color: #E65100; }
+
+  /* Input */
+  .input-area {
+    padding: 16px 24px; background: white; border-top: 1px solid #e0e0e0;
+    display: flex; gap: 12px; align-items: end;
+  }
+  .input-area textarea {
+    flex: 1; border: 1px solid #ddd; border-radius: var(--radius); padding: 12px 16px;
+    font-size: 14px; font-family: inherit; resize: none; outline: none;
+    min-height: 48px; max-height: 120px; transition: border-color 0.2s;
+  }
+  .input-area textarea:focus { border-color: var(--db-red); }
+  .input-area button {
+    background: var(--db-dark); color: white; border: none; border-radius: var(--radius);
+    padding: 12px 24px; font-size: 14px; font-weight: 600; cursor: pointer;
+    transition: background 0.2s; white-space: nowrap;
+  }
+  .input-area button:hover { background: #1a3a42; }
+  .input-area button:disabled { background: #ccc; cursor: not-allowed; }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-brand">
+      <!-- Databricks logo mark -->
+      <svg width="20" height="22" viewBox="0 0 241 266" fill="none"><path d="M228.085 109.654L120.615 171.674L5.53493 105.41L0 108.475V156.582L120.615 225.911L228.085 164.128V189.596L120.615 251.615L5.53493 185.351L0 188.417V196.67L120.615 266L241 196.67V148.564L235.465 145.498L120.615 211.527L12.9148 149.743V124.275L120.615 186.059L241 116.729V69.3298L235.004 65.7925L120.615 131.585L18.4498 73.1028L120.615 14.3848L204.562 62.7269L211.942 58.4823V52.5869L120.615 0L0 69.3298V76.8759L120.615 146.206L228.085 84.1862V109.654Z" fill="white"/></svg>
+      <span class="sidebar-brand-text">Finance Intelligence</span>
+    </div>
+    <button class="new-chat-btn" onclick="newChat()">+ New conversation</button>
+  </div>
+  <div class="conv-list" id="convList"></div>
+  <div class="sidebar-footer">
+    <div class="xray-toggle" id="xrayToggle" onclick="toggleXray()">
+      <span class="xray-icon">&#x1F50D;</span>
+      <span class="xray-toggle-label">X-Ray Mode</span>
+      <div class="xray-switch"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="main">
+  <div class="header">
+    <div class="header-logos">
+      <!-- SAP logo -->
+      <svg height="24" viewBox="0 0 92 45" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="#0070F2" d="M0 45h45.974L90.966 0H0v45"/><path fill="#fff" d="M53.984 9H45l.03 21.13-7.823-21.137H29.45l-6.678 17.653c-.71-4.492-5.354-6.042-9.008-7.203-2.413-.775-4.974-1.915-4.948-3.175.02-1.034 1.37-1.993 4.053-1.85 1.8.097 3.39.242 6.553 1.77l3.11-5.42C19.648 9.3 15.66 8.373 12.39 8.37h-.02c-3.813 0-6.988 1.235-8.956 3.27-1.372 1.42-2.112 3.226-2.142 5.223-.05 2.748.957 4.696 3.073 6.253 1.788 1.31 4.075 2.16 6.09 2.784 2.485.77 4.515 1.44 4.49 2.866-.02.52-.216 1.006-.59 1.398-.62.64-1.57.88-2.885.906-2.537.054-4.417-.345-7.413-2.116L1.27 34.444C4.263 36.146 7.44 37 11.05 37l.812-.006c3.142-.057 5.692-.81 7.718-2.44.116-.093.22-.187.328-.282l-.34 1.752 7.58-.024 1.36-3.482c1.43.488 3.056.758 4.782.758 1.682 0 3.264-.256 4.667-.716l.948 3.44 13.6.013.033-7.938h2.894c6.995 0 11.13-3.56 11.13-9.53C66.56 11.896 62.54 9 53.984 9zM33.29 27.062c-1.045 0-2.025-.182-2.868-.502l2.836-8.955h.055l2.79 8.98c-.84.3-1.797.477-2.814.477zm21.22-5.145h-1.974V14.7h1.975c2.63 0 4.73.876 4.73 3.562-.002 2.78-2.1 3.655-4.73 3.655"/></svg>
+      <div class="header-divider"></div>
+      <!-- Databricks logo -->
+      <img src="/static/databricks-logo.png" height="24" alt="Databricks">
+    </div>
+    <h1>Finance Intelligence Agent</h1>
+    <span class="header-tag">SAP Connect for Data & IT 2026</span>
+  </div>
+
+  <div class="chat-container" id="chat">
+    <div class="welcome" id="welcome">
+      <div class="welcome-logos">
+        <svg height="36" viewBox="0 0 92 45" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="#0070F2" d="M0 45h45.974L90.966 0H0v45"/><path fill="#fff" d="M53.984 9H45l.03 21.13-7.823-21.137H29.45l-6.678 17.653c-.71-4.492-5.354-6.042-9.008-7.203-2.413-.775-4.974-1.915-4.948-3.175.02-1.034 1.37-1.993 4.053-1.85 1.8.097 3.39.242 6.553 1.77l3.11-5.42C19.648 9.3 15.66 8.373 12.39 8.37h-.02c-3.813 0-6.988 1.235-8.956 3.27-1.372 1.42-2.112 3.226-2.142 5.223-.05 2.748.957 4.696 3.073 6.253 1.788 1.31 4.075 2.16 6.09 2.784 2.485.77 4.515 1.44 4.49 2.866-.02.52-.216 1.006-.59 1.398-.62.64-1.57.88-2.885.906-2.537.054-4.417-.345-7.413-2.116L1.27 34.444C4.263 36.146 7.44 37 11.05 37l.812-.006c3.142-.057 5.692-.81 7.718-2.44.116-.093.22-.187.328-.282l-.34 1.752 7.58-.024 1.36-3.482c1.43.488 3.056.758 4.782.758 1.682 0 3.264-.256 4.667-.716l.948 3.44 13.6.013.033-7.938h2.894c6.995 0 11.13-3.56 11.13-9.53C66.56 11.896 62.54 9 53.984 9zM33.29 27.062c-1.045 0-2.025-.182-2.868-.502l2.836-8.955h.055l2.79 8.98c-.84.3-1.797.477-2.814.477zm21.22-5.145h-1.974V14.7h1.975c2.63 0 4.73.876 4.73 3.562-.002 2.78-2.1 3.655-4.73 3.655"/></svg>
+        <span class="welcome-connector">+</span>
+        <svg height="36" viewBox="0 0 241 266" fill="none"><path d="M228.085 109.654L120.615 171.674L5.53493 105.41L0 108.475V156.582L120.615 225.911L228.085 164.128V189.596L120.615 251.615L5.53493 185.351L0 188.417V196.67L120.615 266L241 196.67V148.564L235.465 145.498L120.615 211.527L12.9148 149.743V124.275L120.615 186.059L241 116.729V69.3298L235.004 65.7925L120.615 131.585L18.4498 73.1028L120.615 14.3848L204.562 62.7269L211.942 58.4823V52.5869L120.615 0L0 69.3298V76.8759L120.615 146.206L228.085 84.1862V109.654Z" fill="#EB1600"/></svg>
+      </div>
+      <span class="event-badge">SAP Connect for Data & IT 2026</span>
+      <h2>Finance Intelligence Agent</h2>
+      <p>AI-powered analysis across live SAP S/4HANA data products (via BDC Delta Sharing), external supplier risk intelligence, and corporate governance documents. Ask questions that cross-reference all three sources.</p>
+      <div class="doc-badges">
+        <span class="doc-badge">Procurement Policy</span>
+        <span class="doc-badge">Supplier Code of Conduct</span>
+        <span class="doc-badge">Q4 2025 Audit Report</span>
+        <span class="doc-badge">Treasury Policy</span>
+        <span class="doc-badge">Financial Close Procedures</span>
+        <span class="doc-badge" style="background:#fff3e0;color:#e65100;border-color:#ffcc80">Supplier Risk Intelligence</span>
+      </div>
+      <div class="suggestions">
+        <div class="suggestion" onclick="sendSuggestion(this)"><span class="tag tag-both">DATA + DOCS</span> Which POs exceed our policy approval thresholds and need escalation?</div>
+        <div class="suggestion" onclick="sendSuggestion(this)"><span class="tag tag-both">DATA + DOCS</span> Check supplier concentration — do any breach the 40% single-source policy limit?</div>
+        <div class="suggestion" onclick="sendSuggestion(this)"><span class="tag tag-sql">SAP DATA</span> Top 10 suppliers by total PO spend across all company codes</div>
+        <div class="suggestion" onclick="sendSuggestion(this)"><span class="tag tag-both">DATA + DOCS</span> Compare our Q4 audit findings against current PO and invoice data — are issues resolved?</div>
+        <div class="suggestion" onclick="sendSuggestion(this)"><span class="tag tag-both">DATA + RISK</span> Which suppliers with High or Critical risk ratings have the largest open PO exposure?</div>
+        <div class="suggestion" onclick="sendSuggestion(this)"><span class="tag tag-doc">DOCUMENTS</span> What are the key findings from the Q4 internal audit report?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="input-area">
+    <textarea id="input" placeholder="Ask about SAP finance data, corporate policies, or both..." rows="1"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}"></textarea>
+    <button id="sendBtn" onclick="send()">Analyse</button>
+  </div>
+</div>
+
+<script>
+const chat = document.getElementById('chat');
+const input = document.getElementById('input');
+const sendBtn = document.getElementById('sendBtn');
+const welcome = document.getElementById('welcome');
+const convList = document.getElementById('convList');
+let history = [];
+let isLoading = false;
+let sessionId = crypto.randomUUID();
+let activeSessionId = null;
+let xrayMode = localStorage.getItem('xrayMode') === 'true';
+
+// Init X-Ray toggle state
+if (xrayMode) {
+  document.getElementById('xrayToggle').classList.add('active');
+  document.body.classList.add('xray-on');
+}
+
+function toggleXray() {
+  xrayMode = !xrayMode;
+  localStorage.setItem('xrayMode', xrayMode);
+  document.getElementById('xrayToggle').classList.toggle('active', xrayMode);
+  document.body.classList.toggle('xray-on', xrayMode);
+}
+
+// Load conversations on start
+loadConversations();
+
+input.addEventListener('input', () => {
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+});
+
+function sendSuggestion(el) {
+  const tagEl = el.querySelector('.tag');
+  let text = el.textContent;
+  if (tagEl) text = text.replace(tagEl.textContent, '').trim();
+  input.value = text;
+  send();
+}
+
+function scrollToBottom() {
+  chat.scrollTo({ top: chat.scrollHeight, behavior: 'smooth' });
+}
+
+function buildStepsHtml(steps) {
+  if (!steps || steps.length === 0) return '';
+  const stepIcons = {
+    agent: { icon: '&#x2699;', cls: 'agent' },
+    genie: { icon: '&#x26A1;', cls: 'genie' },
+    document: { icon: '&#x1F4C4;', cls: 'document' },
+  };
+  const uid = `steps-${Date.now()}`;
+  let html = '<div class="steps-timeline">';
+  html += `<div class="steps-header" onclick="toggleSteps('${uid}')"><span class="chevron">&#x25BC;</span> Agent Activity (${steps.length} steps)</div>`;
+  html += `<div class="steps-list" id="${uid}">`;
+  steps.forEach(s => {
+    const isDone = s.action === 'done';
+    const isError = s.action === 'error';
+    const info = stepIcons[s.type] || stepIcons.agent;
+    const iconCls = isError ? 'error' : isDone ? 'done' : info.cls;
+    const iconChar = isError ? '&#x26A0;' : isDone ? '&#x2713;' : info.icon;
+    const labels = {
+      agent: 'Agent', genie: 'Genie Room', document: 'Documents'
+    };
+    const actionLabels = {
+      thinking: 'Thinking', query: 'Query', result: 'Result',
+      search: 'Search', fetch: 'Fetch', error: 'Error', done: 'Done'
+    };
+    const label = `${labels[s.type] || 'Agent'} &middot; ${actionLabels[s.action] || s.action}`;
+    html += `<div class="step-item">`;
+    html += `<div class="step-icon ${iconCls}">${iconChar}</div>`;
+    html += `<div class="step-body">`;
+    html += `<div class="step-label">${label}</div>`;
+    html += `<div class="step-detail">${escapeHtml(s.detail || '')}</div>`;
+    if (s.sql) {
+      html += `<div class="step-sql">${escapeHtml(s.sql)}</div>`;
+    }
+    html += `</div></div>`;
+  });
+  html += '</div></div>';
+  return html;
+}
+
+function toggleSteps(id) {
+  const list = document.getElementById(id);
+  const header = list?.previousElementSibling;
+  if (list) list.classList.toggle('collapsed');
+  if (header) header.classList.toggle('collapsed');
+}
+
+function addMessage(role, content, sources, steps) {
+  if (welcome) welcome.style.display = 'none';
+  const div = document.createElement('div');
+  div.className = `message ${role}`;
+
+  if (role === 'assistant') {
+    let html = '';
+    // Steps timeline — always rendered, CSS controls visibility via body.xray-on
+    if (steps && steps.length > 0) {
+      html += buildStepsHtml(steps);
+    }
+    html += marked.parse(content);
+    if (sources && sources.length > 0) {
+      html += '<div class="sources">';
+      sources.forEach((s, i) => {
+        const uid = `src-${Date.now()}-${i}`;
+        if (s.type === 'sql') {
+          const chipClass = s.error ? 'source-chip error' : 'source-chip sql';
+          const icon = s.error ? '\u26A0' : '\u26A1';
+          const label = s.purpose || 'SQL Query';
+          const meta = s.error ? 'error' : `${s.row_count} rows`;
+          html += `<span class="${chipClass}" onclick="toggleSource('${uid}')">${icon} ${label} (${meta})</span>`;
+          html += `<div class="source-detail" id="${uid}">${escapeHtml(s.query || '')}</div>`;
+        } else if (s.type === 'document') {
+          const docNames = (s.documents || []).join(', ') || 'No matches';
+          html += `<span class="source-chip document" onclick="toggleSource('${uid}')">\uD83D\uDCC4 ${escapeHtml(docNames)}</span>`;
+          const docs = s.doc_contents || [];
+          if (docs.length > 0) {
+            let docHtml = '';
+            docs.forEach(d => {
+              docHtml += `<div class="doc-viewer-header">\uD83D\uDCC4 ${escapeHtml(d.title)} (${escapeHtml(d.doc_id)})</div>`;
+              docHtml += marked.parse(d.content || '');
+            });
+            html += `<div class="source-detail doc-viewer" id="${uid}">${docHtml}</div>`;
+          } else {
+            html += `<div class="source-detail" id="${uid}">${escapeHtml(docNames)}</div>`;
+          }
+        }
+      });
+      html += '</div>';
+    }
+    div.innerHTML = html;
+  } else {
+    div.textContent = content;
+  }
+  chat.appendChild(div);
+  scrollToBottom();
+}
+
+function toggleSource(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.toggle('visible');
+}
+
+function showThinking() {
+  const div = document.createElement('div');
+  div.className = 'thinking'; div.id = 'thinking';
+  div.innerHTML = `
+    <div class="thinking-simple">
+      <div class="dots"><span></span><span></span><span></span></div> Analysing SAP data and documents...
+    </div>
+    <div class="thinking-xray">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <span>Agent working...</span>
+      </div>
+      <div id="live-steps" class="steps-list" style="max-height:none"></div>
+    </div>`;
+  chat.appendChild(div); scrollToBottom();
+}
+
+function addLiveStep(step) {
+  const container = document.getElementById('live-steps');
+  if (!container) return;
+  const stepIcons = { agent: '&#x2699;', genie: '&#x26A1;', document: '&#x1F4C4;' };
+  const labels = { agent: 'Agent', genie: 'Genie Room', document: 'Documents' };
+  const actionLabels = {
+    thinking: 'Thinking', query: 'Query', result: 'Result',
+    search: 'Search', fetch: 'Fetch', error: 'Error', done: 'Done'
+  };
+  const isDone = step.action === 'done';
+  const isError = step.action === 'error';
+  const iconCls = isError ? 'error' : isDone ? 'done' : (step.type === 'genie' ? 'genie' : step.type === 'document' ? 'document' : 'agent');
+  const iconChar = isError ? '&#x26A0;' : isDone ? '&#x2713;' : (stepIcons[step.type] || '&#x2699;');
+  const label = `${labels[step.type] || 'Agent'} &middot; ${actionLabels[step.action] || step.action}`;
+
+  const el = document.createElement('div');
+  el.className = 'step-item';
+  el.innerHTML = `
+    <div class="step-icon ${iconCls}">${iconChar}</div>
+    <div class="step-body">
+      <div class="step-label">${label}</div>
+      <div class="step-detail">${escapeHtml(step.detail || '')}</div>
+      ${step.sql ? `<div class="step-sql">${escapeHtml(step.sql)}</div>` : ''}
+    </div>`;
+  el.style.animation = 'fadeIn 0.3s ease';
+  container.appendChild(el);
+  scrollToBottom();
+}
+
+function removeThinking() {
+  const el = document.getElementById('thinking');
+  if (el) el.remove();
+}
+
+async function send() {
+  const text = input.value.trim();
+  if (!text || isLoading) return;
+  isLoading = true; sendBtn.disabled = true;
+  input.value = ''; input.style.height = 'auto';
+  addMessage('user', text); showThinking();
+  await sendStream(text);
+  isLoading = false; sendBtn.disabled = false; input.focus();
+}
+
+async function sendStream(text) {
+  try {
+    const resp = await fetch('/api/chat/stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: text, session_id: sessionId, history }),
+    });
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let collectedSteps = [];
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      // Parse SSE events from buffer
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop(); // keep incomplete part
+
+      for (const part of parts) {
+        if (!part.trim()) continue;
+        const lines = part.split('\n');
+        let eventType = '', data = '';
+        for (const line of lines) {
+          if (line.startsWith('event: ')) eventType = line.slice(7);
+          else if (line.startsWith('data: ')) data = line.slice(6);
+        }
+        if (!eventType || !data) continue;
+
+        if (eventType === 'step') {
+          const step = JSON.parse(data);
+          collectedSteps.push(step);
+          addLiveStep(step);
+        } else if (eventType === 'done') {
+          const result = JSON.parse(data);
+          removeThinking();
+          addMessage('assistant', result.response, result.sources, collectedSteps);
+          history.push({ role: 'user', content: text });
+          history.push({ role: 'assistant', content: result.response });
+          loadConversations();
+        } else if (eventType === 'error') {
+          const err = JSON.parse(data);
+          removeThinking();
+          addMessage('assistant', `**Error:** ${err.error}`, [], []);
+        }
+      }
+    }
+  } catch (e) {
+    removeThinking();
+    addMessage('assistant', `**Connection error:** ${e.message}`, []);
+  }
+}
+
+async function loadConversations() {
+  try {
+    const resp = await fetch('/api/conversations');
+    const convs = await resp.json();
+    convList.innerHTML = '';
+    convs.forEach(c => {
+      const div = document.createElement('div');
+      div.className = `conv-item${c.session_id === sessionId ? ' active' : ''}`;
+      div.innerHTML = `
+        <span class="conv-title">${escapeHtml(c.title || 'New conversation')}</span>
+        <span class="conv-delete" onclick="event.stopPropagation(); deleteConv('${c.session_id}')">\u00D7</span>
+      `;
+      div.onclick = () => loadChat(c.session_id);
+      convList.appendChild(div);
+    });
+  } catch (e) { /* sidebar fails gracefully */ }
+}
+
+async function loadChat(sid) {
+  try {
+    const resp = await fetch(`/api/conversations/${sid}`);
+    const conv = await resp.json();
+    if (conv.error) return;
+
+    sessionId = sid;
+    history = [];
+    // Clear chat
+    chat.innerHTML = '';
+    if (welcome) { const w = welcome.cloneNode(true); w.style.display = 'none'; chat.appendChild(w); }
+
+    conv.messages.forEach(m => {
+      addMessage(m.role, m.content, m.sources, m.steps);
+      history.push({ role: m.role, content: m.content });
+    });
+    loadConversations();
+  } catch (e) { console.error(e); }
+}
+
+async function deleteConv(sid) {
+  try {
+    await fetch(`/api/conversations/${sid}`, { method: 'DELETE' });
+    if (sid === sessionId) newChat();
+    else loadConversations();
+  } catch (e) { console.error(e); }
+}
+
+function newChat() {
+  sessionId = crypto.randomUUID();
+  history = [];
+  chat.innerHTML = '';
+  // Re-add welcome
+  const w = document.createElement('div');
+  w.className = 'welcome'; w.id = 'welcome';
+  w.innerHTML = `
+    <div class="welcome-logos">
+      <svg height="36" viewBox="0 0 92 45" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="#0070F2" d="M0 45h45.974L90.966 0H0v45"/><path fill="#fff" d="M53.984 9H45l.03 21.13-7.823-21.137H29.45l-6.678 17.653c-.71-4.492-5.354-6.042-9.008-7.203-2.413-.775-4.974-1.915-4.948-3.175.02-1.034 1.37-1.993 4.053-1.85 1.8.097 3.39.242 6.553 1.77l3.11-5.42C19.648 9.3 15.66 8.373 12.39 8.37h-.02c-3.813 0-6.988 1.235-8.956 3.27-1.372 1.42-2.112 3.226-2.142 5.223-.05 2.748.957 4.696 3.073 6.253 1.788 1.31 4.075 2.16 6.09 2.784 2.485.77 4.515 1.44 4.49 2.866-.02.52-.216 1.006-.59 1.398-.62.64-1.57.88-2.885.906-2.537.054-4.417-.345-7.413-2.116L1.27 34.444C4.263 36.146 7.44 37 11.05 37l.812-.006c3.142-.057 5.692-.81 7.718-2.44.116-.093.22-.187.328-.282l-.34 1.752 7.58-.024 1.36-3.482c1.43.488 3.056.758 4.782.758 1.682 0 3.264-.256 4.667-.716l.948 3.44 13.6.013.033-7.938h2.894c6.995 0 11.13-3.56 11.13-9.53C66.56 11.896 62.54 9 53.984 9zM33.29 27.062c-1.045 0-2.025-.182-2.868-.502l2.836-8.955h.055l2.79 8.98c-.84.3-1.797.477-2.814.477zm21.22-5.145h-1.974V14.7h1.975c2.63 0 4.73.876 4.73 3.562-.002 2.78-2.1 3.655-4.73 3.655"/></svg>
+      <span class="welcome-connector">+</span>
+      <svg height="36" viewBox="0 0 241 266" fill="none"><path d="M228.085 109.654L120.615 171.674L5.53493 105.41L0 108.475V156.582L120.615 225.911L228.085 164.128V189.596L120.615 251.615L5.53493 185.351L0 188.417V196.67L120.615 266L241 196.67V148.564L235.465 145.498L120.615 211.527L12.9148 149.743V124.275L120.615 186.059L241 116.729V69.3298L235.004 65.7925L120.615 131.585L18.4498 73.1028L120.615 14.3848L204.562 62.7269L211.942 58.4823V52.5869L120.615 0L0 69.3298V76.8759L120.615 146.206L228.085 84.1862V109.654Z" fill="#EB1600"/></svg>
+    </div>
+    <span class="event-badge">SAP Connect for Data & IT 2026</span>
+    <h2>Finance Intelligence Agent</h2>
+    <p>AI-powered analysis across live SAP S/4HANA data products (via BDC Delta Sharing) and corporate governance documents. Ask questions that cross-reference both sources.</p>
+    <div class="doc-badges">
+      <span class="doc-badge">Procurement Policy</span>
+      <span class="doc-badge">Supplier Code of Conduct</span>
+      <span class="doc-badge">Q4 2025 Audit Report</span>
+      <span class="doc-badge">Treasury Policy</span>
+      <span class="doc-badge">Financial Close Procedures</span>
+    </div>
+    <div class="suggestions">
+      <div class="suggestion" onclick="sendSuggestion(this)"><span class="tag tag-both">DATA + DOCS</span> Are any open POs above our procurement policy approval thresholds?</div>
+      <div class="suggestion" onclick="sendSuggestion(this)"><span class="tag tag-both">DATA + DOCS</span> Draft a CFO risk briefing covering overdue POs and Q4 audit findings</div>
+      <div class="suggestion" onclick="sendSuggestion(this)"><span class="tag tag-both">DATA + DOCS</span> What's our FX exposure by currency vs treasury policy limits?</div>
+      <div class="suggestion" onclick="sendSuggestion(this)"><span class="tag tag-sql">SAP DATA</span> Top 10 suppliers by total spend with payment terms breakdown</div>
+      <div class="suggestion" onclick="sendSuggestion(this)"><span class="tag tag-both">DATA + DOCS</span> Which supplier categories have concentration risk above the 40% policy limit?</div>
+      <div class="suggestion" onclick="sendSuggestion(this)"><span class="tag tag-doc">DOCUMENTS</span> Summarise our financial close procedures and key deadlines</div>
+    </div>
+  `;
+  chat.appendChild(w);
+  loadConversations();
+  input.focus();
+}
+
+function escapeHtml(text) {
+  const d = document.createElement('div');
+  d.textContent = text;
+  return d.innerHTML;
+}
+</script>
+</body>
+</html>

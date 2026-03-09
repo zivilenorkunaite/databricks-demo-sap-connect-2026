@@ -1,0 +1,15 @@
+command:
+  - uvicorn
+  - server.main:app
+  - --host
+  - 0.0.0.0
+  - --port
+  - "8000"
+
+env:
+  - name: DATABRICKS_WAREHOUSE_ID
+    valueFrom: sql-warehouse
+  - name: GENIE_ROOM_ID
+    valueFrom: genie-room
+  - name: SERVING_ENDPOINT
+    valueFrom: serving-endpoint
