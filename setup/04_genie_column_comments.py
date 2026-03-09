@@ -10,9 +10,9 @@ import configparser
 import os
 import requests
 
-PROFILE = "DEFAULT"
-GENIE_ROOM_ID = "01f11b67acc9177abc5f344f75fe4389"
-WAREHOUSE_ID = "c2abb17a6c9e6bc0"
+PROFILE = os.environ.get("DATABRICKS_PROFILE", "DEFAULT")
+GENIE_ROOM_ID = os.environ.get("GENIE_ROOM_ID", "01f11b67acc9177abc5f344f75fe4389")
+WAREHOUSE_ID = os.environ.get("WAREHOUSE_ID", os.environ.get("DATABRICKS_WAREHOUSE_ID", "c2abb17a6c9e6bc0"))
 
 # Column descriptions for all tables (must be sorted by column_name per table)
 COLUMN_COMMENTS = {
