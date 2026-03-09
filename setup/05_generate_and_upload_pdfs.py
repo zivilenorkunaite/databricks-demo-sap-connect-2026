@@ -153,7 +153,7 @@ class FinancePDF(FPDF):
     def add_bullet(self, text):
         self.set_font("Helvetica", "", 10)
         self.set_text_color(30, 30, 30)
-        self.cell(6, 5.5, chr(8226))
+        self.cell(6, 5.5, "-")
         self.multi_cell(0, 5.5, text)
         self.ln(1)
 
