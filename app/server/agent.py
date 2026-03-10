@@ -9,7 +9,8 @@ from server.documents import search_documents, get_document, list_documents
 
 logger = logging.getLogger(__name__)
 
-_client_cache: OpenAI | None = None
+_ws_client = None
+_host: str | None = None
 
 
 def _get_doc_index() -> str:
@@ -112,28 +113,29 @@ TOOLS = [
 
 
 def _get_client() -> OpenAI:
-    global _client_cache
-    if _client_cache is not None:
-        return _client_cache
+    """Return an OpenAI client with a fresh token (SP tokens are short-lived)."""
+    global _ws_client, _host
 
     from databricks.sdk import WorkspaceClient
-    w = WorkspaceClient()
-    host = w.config.host.rstrip("/")
-    token = w.config.token
+    if _ws_client is None:
+        _ws_client = WorkspaceClient()
+        _host = _ws_client.config.host.rstrip("/")
+
+    # Always get a fresh token
+    token = _ws_client.config.token
     if not token:
-        headers = w.config.authenticate()
+        headers = _ws_client.config.authenticate()
         token = headers.get("Authorization", "").replace("Bearer ", "")
     if not token:
         token = os.environ.get("DATABRICKS_TOKEN", "")
     if not token:
         raise ValueError("No Databricks token available — check app service principal config")
 
-    _client_cache = OpenAI(
-        base_url=f"{host}/serving-endpoints",
+    return OpenAI(
+        base_url=f"{_host}/serving-endpoints",
         api_key=token,
         timeout=120.0,
     )
-    return _client_cache
 
 
 def _emit_step(step: dict, steps: list, on_step=None):
